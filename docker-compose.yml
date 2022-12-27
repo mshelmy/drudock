@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+
+  php:
+    image: php:${WEB_PHP_VERSION}-fpm
+    container_name: $WEB_PHP_CONTAINER_NAME
+    volumes:
+      - ./src:/var/www/html
+      - ./config/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+
+  web:
+    image: nginx:${WEB_NGINX_VERSION}
+    container_name: $WEB_NGINX_CONTAINER_NAME
+    ports:
+      - ${WEB_HOST_PORT}:80
+    volumes:
+      - ./src:/var/www/html
+      - ./config/nginx/default.conf:/etc/nginx/conf.d/default.conf
+
+  mysql:
+    image: mysql:${MYSQL_VERSION}
+    container_name: $MYSQL_CONTAINER_NAME
+    ports:
+      - ${MYSQL_HOST_PORT}:3306
+    volumes:
+      - ./db-backups:/var/mysql/backups
+      - ./db-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: $DB_ROOT_PASSWORD
+      MYSQL_DATABASE: $DB_NAME
+      MYSQL_USER: $DB_USER
+      MYSQL_PASSWORD: $DB_PASSWORD
+    restart: always
+    command: "--max_allowed_packet=32505856 --default-authentication-plugin=mysql_native_password"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: $PHPMYADMIN_CONTAINER_NAME
+    depends_on:
+      - mysql
+    restart: always
+    ports:
+      - ${PHPMYADMIN_HOST_PORT}:80
+    environment:
+      PMA_HOST: mysql
+
+  drupal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        LIBRARIES_LIST: 'zlib1g-dev libpng-dev libjpeg-dev libfreetype6-dev libzip-dev'
+        PHP_EXTENSIONS_LIST: 'gd pdo_mysql'
+        PHP_IMAGE: php:${WEB_PHP_VERSION}-fpm
+    container_name: Drupal
+    depends_on:
+      - mysql
+    restart: always
+    ports:
+      - 8888:80
+    volumes:
+      - ./src:/var/www/html

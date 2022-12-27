@@ -1,0 +1,6 @@
+/src/*
+/.env
+db-backups/*
+db-data/*
+.build/
+.idea/
